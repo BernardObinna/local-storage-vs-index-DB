@@ -12,7 +12,13 @@
 
           <h5>Pros</h5>
           <ul class="">
-            <li>Fast</li>
+            <li>Easy and straightforward to work with</li>
+          </ul>
+
+          <h5>Cons</h5>
+          <ul class="">
+            <li>It can only contain a small amount of data</li>
+            <li>It can only store strings as key value pairs</li>
           </ul>
 
           <h5>Metrics</h5>
@@ -26,6 +32,18 @@
 
         <div class="col-lg-6">
           <h3>Index DB</h3>
+
+          <h5>Pros</h5>
+          <ul class="">
+            <li>Allows fast indexing and searching of objects, so you can manage your data and read/write it fast.</li>
+            <li>It allow for storage of large amounts of data</li>
+            <li>It allow for storage of various data objects including files</li>
+          </ul>
+
+          <h5>Cons</h5>
+          <ul class="">
+            <li>It is complex to work with</li>
+          </ul>
         </div>
       </div>
     </div>
