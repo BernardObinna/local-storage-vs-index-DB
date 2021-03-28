@@ -51,21 +51,6 @@ export default {
     // batch.commit().then(() => {
     //   this.$toastr.s('Data uploaded');
     // });
-
-
-    // console.log(this.$faker().random.number({ min: 10000000000, max: 99999999998 }));
-    // console.log(this.$faker().fake('{{name.lastName}}, {{name.firstName}} {{name.suffix}}'));
-    // console.log(this.$faker().date.past().format('d/m/Y'));
-    // console.log(this.$faker().address.streetAddress());
-    // console.log(this.$faker().address.city());
-    // db.collection('users').add({
-    //   name: this.$faker().name.firstName(),
-    //   address: this.$faker().fake('{{address.streetAddress}}, {{address.cityName}} {{address.county}}'),
-    //   bvn: this.$faker().random.number({ min: 10000000000, max: 99999999998 }),
-    //   dob: this.$faker().date.past(),
-    //   email: this.$faker().internet.email(),
-    //   phone: this.$faker().phone.phoneNumber()
-    // });
   }
 };
 </script>
