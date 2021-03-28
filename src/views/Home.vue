@@ -6,13 +6,66 @@
 </template>
 
 <script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+import HelloWorld from '@/components/HelloWorld.vue';
+// import moment from 'moment'
+
+// import db from '@/utils/firebase.js';
 
 export default {
   name: 'Home',
   components: {
     HelloWorld
+  },
+
+  data() {
+    return {
+      users: []
+    };
+  },
+
+  mounted() {
+    // db.collection('users').get().then(res => {
+    //   res.docs.forEach(doc => {
+    //     console.log(doc.data());
+    //
+    //   });
+    // });
+    //
+
+    // const batch = db.batch();
+
+    for (let i = 0; i < 2; i++) {
+      const user = {
+        name: this.$faker().fake('{{name.firstName}} {{name.lastName}}'),
+        address: this.$faker().fake('{{address.streetAddress}}, {{address.cityName}} {{address.county}}'),
+        bvn: this.$faker().datatype.number({ min: 10000000000, max: 99999999998 }),
+        dob: this.$faker().date.past(),
+        email: this.$faker().internet.email(),
+        phone: this.$faker().fake('0810') + this.$faker().datatype.number({ min: 1000000, max: 9999998 })
+      };
+      this.users.push(user);
+      // const refrence = db.collection('users').doc(); // to automatically generate a unique id
+      // batch.set(refrence, user);
+    }
+    //
+    // batch.commit().then(() => {
+    //   this.$toastr.s('Data uploaded');
+    // });
+
+
+    // console.log(this.$faker().random.number({ min: 10000000000, max: 99999999998 }));
+    // console.log(this.$faker().fake('{{name.lastName}}, {{name.firstName}} {{name.suffix}}'));
+    // console.log(this.$faker().date.past().format('d/m/Y'));
+    // console.log(this.$faker().address.streetAddress());
+    // console.log(this.$faker().address.city());
+    // db.collection('users').add({
+    //   name: this.$faker().name.firstName(),
+    //   address: this.$faker().fake('{{address.streetAddress}}, {{address.cityName}} {{address.county}}'),
+    //   bvn: this.$faker().random.number({ min: 10000000000, max: 99999999998 }),
+    //   dob: this.$faker().date.past(),
+    //   email: this.$faker().internet.email(),
+    //   phone: this.$faker().phone.phoneNumber()
+    // });
   }
-}
+};
 </script>
