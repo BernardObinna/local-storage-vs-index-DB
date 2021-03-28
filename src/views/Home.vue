@@ -66,12 +66,14 @@
 
       <tbody>
       <tr v-for="(user, index) in users" :key="index">
+      <template v-if="index < 10">
         <td>{{ user.name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
         <td>{{ user.dob | formatDate }}</td>
         <td>{{ user.address }}</td>
         <td>{{ user.bvn }}</td>
+      </template>
       </tr>
       </tbody>
     </table>
