@@ -14,14 +14,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 firebase.analytics();
-const db = firebase.firestore();
+export const db = firebase.firestore();
 db.settings({ timestampsInSnapshots: true });
 
-export default db;
-// apiKey: 'AIzaSyCKZfUfRApnhxYSEYdP4ZuQjzHzUeWmWpI',
-//   authDomain: 'localstorage-vs-indexdb.firebaseapp.com',
-//   projectId: 'localstorage-vs-indexdb',
-//   storageBucket: 'localstorage-vs-indexdb.appspot.com',
-//   messagingSenderId: '183519024179',
-//   appId: '1:183519024179:web:e4eda77d2366541078bf46',
-//   measurementId: 'G-DK1FV9Y40D'
+export const timeStamp = firebase.firestore.FieldValue.serverTimestamp();

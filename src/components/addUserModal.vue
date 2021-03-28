@@ -57,7 +57,7 @@
             </div>
 
             <div class="mt-4">
-              <button type="submit" :disabled="loading" class="btn btn--color-primary-blue">{{ loading ? 'Processing' : 'Submit' }}</button>
+              <button type="submit" :disabled="loading || this.$v.form.$anyError" class="btn btn--color-primary-blue">{{ loading ? 'Processing' : 'Submit' }}</button>
             </div>
           </form>
         </div>
@@ -70,7 +70,7 @@
 import { validationMixin } from 'vuelidate';
 import moment from 'moment';
 import { onlyNumbers } from '@/utils/Convert';
-import db from '@/utils/firebase.js';
+import { db, timeStamp } from '@/utils/firebase.js';
 
 const { required, minLength, maxLength, email, numeric } = require('vuelidate/lib/validators');
 
@@ -81,12 +81,12 @@ export default {
   data() {
     return {
       form: {
-        name: '',
-        email: '',
-        phone: '',
+        name: 'www',
+        email: 'test@gmail.con',
+        phone: '11111111111',
         dob: '',
-        address: '',
-        bvn: ''
+        address: '22222222222',
+        bvn: '22222222222'
       },
 
       loading: false,
@@ -111,9 +111,14 @@ export default {
       this.$v.form.$touch();
       if (!this.$v.form.$anyError) {
         this.loading = true;
-        db.collection('users').add(this.form).then(() => {
+        const payload = { ...this.form, timeStamp };
+        db.collection('users').add(payload).then(() => {
           this.loading = false;
           this.$toastr.s('User data Uploaded', 'SUCCESS');
+          const AddStartTime = moment();
+          JSON.parse(localStorage.getItem('woven_user_records')).push(payload);
+          const AddFinishTime = moment();
+          this.$emit('submitted', AddFinishTime.diff(AddStartTime));
           this.$refs.closeDeleteModal.click();
         }).catch(() => {
           this.loading = false;
