@@ -81,12 +81,12 @@ export default {
   data() {
     return {
       form: {
-        name: 'www',
-        email: 'test@gmail.con',
-        phone: '11111111111',
+        name: '',
+        email: '',
+        phone: '',
         dob: '',
-        address: '22222222222',
-        bvn: '22222222222'
+        address: '',
+        bvn: ''
       },
 
       loading: false,
