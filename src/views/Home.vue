@@ -92,7 +92,8 @@ export default {
 
   mounted() {
     this.setUpRealTimeLink();
-    // if (!localStorage.getItem('woven_user_records')) this.populateUsers();
+
+    // this.populateUsers();
   },
 
   filters: {
@@ -150,6 +151,7 @@ export default {
       this.localStorageInfo.addTime = addTime;
     },
 
+    // this is for populating the sample set
     populateUsers() {
       this.connecting.addingRecords = true;
       const batch = db.batch();
