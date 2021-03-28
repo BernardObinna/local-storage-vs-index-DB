@@ -73,7 +73,6 @@ export default {
 
   data() {
     return {
-      dataExists: false,
       users: [],
       localStorageRecord: [],
       indexDBRecord: [],
@@ -84,7 +83,6 @@ export default {
       },
 
       connecting: {
-        gettingUsers: false,
         gettingUsersFromLS: false,
         gettingUsersFromIDB: false,
         addingRecords: false
@@ -95,8 +93,6 @@ export default {
   mounted() {
     this.setUpRealTimeLink();
     // if (!localStorage.getItem('woven_user_records')) this.populateUsers();
-    // else this.dataExists = true;
-    // this.getUsers();
   },
 
   filters: {
@@ -108,39 +104,12 @@ export default {
   methods: {
     setUpRealTimeLink() {
       db.collection('users').onSnapshot(records => {
+        console.log('records', { ...records });
         this.users = records.docs.map(record => {
           return record.data();
         });
         this.addRecordToLocalStorage();
       });
-    },
-
-    getUsers() {
-      if (!this.dataExists) {
-        this.connecting.gettingUsers = true;
-        // db.collection('users').get().then(res => {
-        //   console.log('the doc', res);
-        //   this.users = res.docs.map(doc => {
-        //     console.log('the doc time', doc.data());
-        //     return doc.data();
-        //   });
-        //
-        //   // this.addRecordToLocalStorage();
-        //   this.connecting.gettingUsers = false;
-        // }).catch(() => {
-        //   this.connecting.gettingUsers = false;
-        //   this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
-        // });
-
-          // this.addRecordToLocalStorage();
-          this.connecting.gettingUsers = false;
-        }).catch(() => {
-          this.connecting.gettingUsers = false;
-          this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
-        });
-      } else {
-        this.getRecordFromLocalStorage();
-      }
     },
 
     getRecordFromLocalStorage() {
