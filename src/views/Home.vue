@@ -43,7 +43,7 @@
         <td>{{ user.name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
-        <td>{{ user.dob }}</td>
+        <td>{{ user.dob | formatDate }}</td>
         <td>{{ user.address }}</td>
         <td>{{ user.bvn }}</td>
       </tr>
@@ -74,7 +74,14 @@ export default {
   },
 
   mounted() {
+    // this.populateUsers()
     // this.getUsers();
+  },
+
+  filters: {
+    formatDate(date) {
+      return moment(date).format('Do MMMM, YYYY');
+    }
   },
 
   methods: {
@@ -95,7 +102,7 @@ export default {
           name: this.$faker().fake('{{name.firstName}} {{name.lastName}}'),
           address: this.$faker().fake('{{address.streetAddress}}, {{address.cityName}} {{address.county}}'),
           bvn: this.$faker().datatype.number({ min: 10000000000, max: 99999999998 }),
-          dob: moment(this.$faker().date.past()).format('Do MMMM, YYYY'),
+          dob: moment(this.$faker().date.past()).format(),
           email: this.$faker().internet.email(),
           phone: this.$faker().fake('0810') + this.$faker().datatype.number({ min: 1000000, max: 9999998 })
         };
@@ -106,7 +113,7 @@ export default {
 
       batch.commit().then(() => {
         this.connecting.addingRecords = false;
-        this.$toastr.s('Data uploaded');
+        this.$toastr.s('Data uploaded', 'SUCCESS');
       }).catch(() => {
         this.connecting.addingRecords = false;
         this.$toastr.e('Couldn\'t upload data. Please check your network connection and refresh the page');

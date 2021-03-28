@@ -113,7 +113,7 @@ export default {
         this.loading = true;
         db.collection('users').add(this.form).then(() => {
           this.loading = false;
-          this.$toastr.s('SUCCESS', 'User data Uploaded');
+          this.$toastr.s('User data Uploaded', 'SUCCESS');
           this.$refs.closeDeleteModal.click();
         }).catch(() => {
           this.loading = false;
