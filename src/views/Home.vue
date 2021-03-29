@@ -120,18 +120,11 @@ export default {
     };
   },
 
-  // async created() {
-  //   this.indexDB = await this.initializeIndexDB();
-  //   await this.getRecordsFromIndexDB();
-  //   this.getRecordFromLocalStorage()
-  //   if (!this.indexDBRecord.length && !this.localStorageRecord.length) this.getUsersFromServer();
-  // },
-
   async mounted() {
     this.indexDB = await this.initializeIndexDB();
     await this.getRecordsFromIndexDB();
-    this.getRecordFromLocalStorage()
-    if (!this.indexDBRecord.length && !this.localStorageRecord.length) this.getUsersFromServer();
+    this.getRecordFromLocalStorage();
+    if (!this.indexDBRecord.length || !this.localStorageRecord.length) this.getUsersFromServer();
     // this.setUpRealTimeLink();
     // this.populateUsers();
   },
@@ -149,7 +142,7 @@ export default {
         this.users = res.docs.map(doc => {
           return doc.data();
         });
-        this.addRecordsToLocalStorage();
+        this.addAllRecordsToLocalStorage();
         this.addAllRecordsToIndexDB();
       }).catch(() => {
         this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
@@ -161,7 +154,7 @@ export default {
         this.users = records.docs.map(record => {
           return record.data();
         });
-        this.addRecordsToLocalStorage();
+        this.addAllRecordsToLocalStorage();
         this.addAllRecordsToIndexDB();
       });
     },
@@ -193,7 +186,7 @@ export default {
       }
     },
 
-    addRecordsToLocalStorage() {
+    addAllRecordsToLocalStorage() {
       localStorage.setItem('woven_user_records', JSON.stringify(this.users));
       this.getRecordFromLocalStorage();
     },
@@ -211,7 +204,7 @@ export default {
         const request = window.indexedDB.open('woven_user_records', 1);
 
         request.onerror = e => {
-          this.$toastr('Error opening db', 'Error');
+          this.$toastr.e('Error opening db', 'Error');
           reject(e);
         };
 
@@ -230,61 +223,63 @@ export default {
 
     getRecordsFromIndexDB() {
       if (!this.indexDBInitialized) return;
-      // return new Promise((resolve, reject) => {
-      this.connecting.gettingUsersFromIDB = true;
+      return new Promise((resolve, reject) => {
+        this.connecting.gettingUsersFromIDB = true;
 
-      // fetch
-      const fetchStartTime = moment();
-      const transaction = this.indexDB.transaction(['user_records'], 'readonly');
-      const store = transaction.objectStore('user_records');
-      const indexDBRecord = [];
+        // fetch
+        const fetchStartTime = moment();
+        const transaction = this.indexDB.transaction(['user_records'], 'readonly');
+        const store = transaction.objectStore('user_records');
+        const indexDBRecord = [];
 
-      transaction.oncomplete = e => {
-        this.indexDBRecord = indexDBRecord;
-        const fetchFinishTime = moment();
-        this.connecting.gettingUsersFromIDB = false;
-        this.indexDBMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
-        // resolve(indexDBRecord);
-      };
+        transaction.oncomplete = async e => {
+          this.indexDBRecord = indexDBRecord;
+          const fetchFinishTime = moment();
+          this.connecting.gettingUsersFromIDB = false;
+          this.indexDBMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
+          await this.sortIndexDB();
+          resolve();
+        };
 
-      store.openCursor().onsuccess = e => {
-        const cursor = e.target.result;
-        if (cursor) {
-          indexDBRecord.push(cursor.value);
-          cursor.continue();
-        }
-      };
-      // });
+        store.openCursor().onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            indexDBRecord.push(cursor.value);
+            cursor.continue();
+          }
+        };
+      });
     },
 
     sortIndexDB() {
       if (!this.indexDBInitialized) return;
-      const sortStartTime = moment();
-      const transaction = this.indexDB.transaction(['user_records'], 'readonly');
-      const store = transaction.objectStore('user_records');
-      const index = store.index('name');
-      const indexDBRecord = [];
-      const cursorRequest = index.openCursor();
+      return new Promise((resolve, reject) => {
+        const sortStartTime = moment();
+        const transaction = this.indexDB.transaction(['user_records'], 'readonly');
+        const store = transaction.objectStore('user_records');
+        const indexDBRecord = [];
+        const cursorRequest = store.openCursor(null, 'prev');
 
-      cursorRequest.onsuccess = e => {
-        const cursor = e.target.result;
-        if (cursor) {
-          indexDBRecord.push(cursor.value);
-          cursor.continue();
-        }
-      };
+        cursorRequest.onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            indexDBRecord.push(cursor.value);
+            cursor.continue();
+          }
+        };
 
-      transaction.oncomplete = e => {
-        this.indexDBRecord = indexDBRecord;
-        const sortFinishTime = moment();
-        this.connecting.gettingUsersFromIDB = false;
-        this.indexDBMetrics.sortTime = sortFinishTime.diff(sortStartTime);
-      };
+        transaction.oncomplete = e => {
+          this.indexDBRecord = indexDBRecord;
+          const sortFinishTime = moment();
+          this.connecting.gettingUsersFromIDB = false;
+          this.indexDBMetrics.sortTime = sortFinishTime.diff(sortStartTime);
+          resolve();
+        };
+      });
     },
 
     addAllRecordsToIndexDB() {
       if (!this.indexDBInitialized) return;
-      console.log('does this run', this.indexDBInitialized, this.indexDB);
       this.users.forEach(async user => {
         await this.addSingleUserToIndexDB(user);
       });
@@ -292,19 +287,19 @@ export default {
 
     addSingleUserToIndexDB(user) {
       if (!this.indexDBInitialized) return;
-      // return new Promise((resolve, reject) => {
-      const addStartTime = moment();
-      const trans = this.indexDB.transaction(['user_records'], 'readwrite');
-      const store = trans.objectStore('user_records');
-      store.add(user);
+      return new Promise((resolve, reject) => {
+        const addStartTime = moment();
+        const trans = this.indexDB.transaction(['user_records'], 'readwrite');
+        const store = trans.objectStore('user_records');
+        store.add(user);
 
-      trans.oncomplete = e => {
-        const addFinishTime = moment();
-        this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
-        this.indexDBRecord.push(user);
-        // resolve();
-      };
-      // });
+        trans.oncomplete = e => {
+          const addFinishTime = moment();
+          this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
+          this.indexDBRecord.push(user);
+          resolve();
+        };
+      });
     },
 
     // this is for populating the sample set
@@ -329,7 +324,7 @@ export default {
 
       batch.commit().then(() => {
         this.connecting.addingRecords = false;
-        this.addRecordsToLocalStorage();
+        this.addAllRecordsToLocalStorage();
         this.addAllRecordsToIndexDB();
         this.$toastr.s('Data uploaded', 'SUCCESS');
       }).catch(() => {
