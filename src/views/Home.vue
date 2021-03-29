@@ -94,6 +94,7 @@ export default {
   data() {
     return {
       users: [],
+      indexDBInitialized: false,
       indexDB: null,
       localStorageRecord: [],
       indexDBRecord: [],
@@ -119,14 +120,19 @@ export default {
     };
   },
 
-  async created() {
+  // async created() {
+  //   this.indexDB = await this.initializeIndexDB();
+  //   await this.getRecordsFromIndexDB();
+  //   this.getRecordFromLocalStorage()
+  //   if (!this.indexDBRecord.length && !this.localStorageRecord.length) this.getUsersFromServer();
+  // },
+
+  async mounted() {
     this.indexDB = await this.initializeIndexDB();
-    this.indexDBRecord = await this.getRecordsFromIndexDB();
-  },
-
-  mounted() {
+    await this.getRecordsFromIndexDB();
+    this.getRecordFromLocalStorage()
+    if (!this.indexDBRecord.length && !this.localStorageRecord.length) this.getUsersFromServer();
     // this.setUpRealTimeLink();
-
     // this.populateUsers();
   },
 
@@ -137,6 +143,19 @@ export default {
   },
 
   methods: {
+    getUsersFromServer() {
+      const getOptions = { source: 'cache' };
+      db.collection('users').get(getOptions).then(res => {
+        this.users = res.docs.map(doc => {
+          return doc.data();
+        });
+        this.addRecordsToLocalStorage();
+        this.addAllRecordsToIndexDB();
+      }).catch(() => {
+        this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
+      });
+    },
+
     setUpRealTimeLink() {
       db.collection('users').onSnapshot(records => {
         this.users = records.docs.map(record => {
@@ -197,62 +216,103 @@ export default {
         };
 
         request.onsuccess = e => {
+          this.indexDBInitialized = true;
           resolve(e.target.result);
         };
 
         request.onupgradeneeded = e => {
           const database = e.target.result;
           database.createObjectStore('user_records', { autoIncrement: true, keyPath: 'id' });
+          this.indexDBInitialized = true;
         };
       });
     },
 
     getRecordsFromIndexDB() {
-      return new Promise((resolve, reject) => {
-        const transaction = this.indexDB.transaction(['user_records'], 'readonly');
-        const store = transaction.objectStore('user_records');
-        const indexDBRecord = [];
+      if (!this.indexDBInitialized) return;
+      // return new Promise((resolve, reject) => {
+      this.connecting.gettingUsersFromIDB = true;
 
-        transaction.oncomplete = e => {
-          resolve(indexDBRecord);
-        };
+      // fetch
+      const fetchStartTime = moment();
+      const transaction = this.indexDB.transaction(['user_records'], 'readonly');
+      const store = transaction.objectStore('user_records');
+      const indexDBRecord = [];
 
-        store.openCursor().onsuccess = e => {
-          const cursor = e.target.result;
-          if (cursor) {
-            indexDBRecord.push(cursor.value);
-            cursor.continue();
-          }
-        };
-      });
+      transaction.oncomplete = e => {
+        this.indexDBRecord = indexDBRecord;
+        const fetchFinishTime = moment();
+        this.connecting.gettingUsersFromIDB = false;
+        this.indexDBMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
+        // resolve(indexDBRecord);
+      };
+
+      store.openCursor().onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          indexDBRecord.push(cursor.value);
+          cursor.continue();
+        }
+      };
+      // });
+    },
+
+    sortIndexDB() {
+      if (!this.indexDBInitialized) return;
+      const sortStartTime = moment();
+      const transaction = this.indexDB.transaction(['user_records'], 'readonly');
+      const store = transaction.objectStore('user_records');
+      const index = store.index('name');
+      const indexDBRecord = [];
+      const cursorRequest = index.openCursor();
+
+      cursorRequest.onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          indexDBRecord.push(cursor.value);
+          cursor.continue();
+        }
+      };
+
+      transaction.oncomplete = e => {
+        this.indexDBRecord = indexDBRecord;
+        const sortFinishTime = moment();
+        this.connecting.gettingUsersFromIDB = false;
+        this.indexDBMetrics.sortTime = sortFinishTime.diff(sortStartTime);
+      };
     },
 
     addAllRecordsToIndexDB() {
+      if (!this.indexDBInitialized) return;
+      console.log('does this run', this.indexDBInitialized, this.indexDB);
       this.users.forEach(async user => {
         await this.addSingleUserToIndexDB(user);
       });
     },
 
     addSingleUserToIndexDB(user) {
-      return new Promise((resolve, reject) => {
-        const addStartTime = moment();
-        const trans = this.db.transaction(['user_records'], 'readwrite');
-        const store = trans.objectStore('user_records');
-        store.add(user);
+      if (!this.indexDBInitialized) return;
+      // return new Promise((resolve, reject) => {
+      const addStartTime = moment();
+      const trans = this.indexDB.transaction(['user_records'], 'readwrite');
+      const store = trans.objectStore('user_records');
+      store.add(user);
 
-        trans.oncomplete = e => {
-          const addFinishTime = moment();
-          this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
-          resolve();
-        };
-      });
+      trans.oncomplete = e => {
+        const addFinishTime = moment();
+        this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
+        this.indexDBRecord.push(user);
+        // resolve();
+      };
+      // });
     },
 
     // this is for populating the sample set
     populateUsers() {
       this.connecting.addingRecords = true;
       const batch = db.batch();
-      for (let i = 0; i < 500; i++) {
+      // for (let i = 0; i < 500; i++) {
+      for (let i = 0; i < 1; i++) {
         const user = {
           timeStamp,
           name: this.$faker().fake('{{name.firstName}} {{name.lastName}}'),
@@ -269,6 +329,8 @@ export default {
 
       batch.commit().then(() => {
         this.connecting.addingRecords = false;
+        this.addRecordsToLocalStorage();
+        this.addAllRecordsToIndexDB();
         this.$toastr.s('Data uploaded', 'SUCCESS');
       }).catch(() => {
         this.connecting.addingRecords = false;
