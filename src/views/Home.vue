@@ -44,6 +44,14 @@
           <ul class="">
             <li>It is complex to work with</li>
           </ul>
+
+          <h5>Metrics</h5>
+
+          <ul class="">
+            <li v-if="indexDBMetrics.getTime !== null">Fetch time: {{ indexDBMetrics.getTime }} Millisecond(s)</li>
+            <li v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
+            <li v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -113,6 +121,7 @@ export default {
 
       // this if for U.I loaders to show the loading state to the users
       connecting: {
+        gettingUsersFromFirestore: false,
         gettingUsersFromLS: false,
         gettingUsersFromIDB: false,
         addingRecords: false
@@ -121,10 +130,13 @@ export default {
   },
 
   async mounted() {
+    // initialize index db
     this.indexDB = await this.initializeIndexDB();
     await this.getRecordsFromIndexDB();
     this.getRecordFromLocalStorage();
     if (!this.indexDBRecord.length || !this.localStorageRecord.length) this.getUsersFromServer();
+
+    // methods below don't need to be called by me again because i've set them up already. check their declarations for their uses
     // this.setUpRealTimeLink();
     // this.populateUsers();
   },
@@ -136,19 +148,34 @@ export default {
   },
 
   methods: {
-    getUsersFromServer() {
-      const getOptions = { source: 'cache' };
+    getUsersFromServer(useCache = true) {
+      this.connecting.gettingUsersFromFirestore = true;
+      const getOptions = { source: useCache ? 'cache' : 'server' };
       db.collection('users').get(getOptions).then(res => {
+        // use the cache to get data if it is present
+        if (!res.docs.length) {
+          this.getUsersFromServer(false);
+          return;
+        }
         this.users = res.docs.map(doc => {
           return doc.data();
         });
         this.addAllRecordsToLocalStorage();
         this.addAllRecordsToIndexDB();
+        this.connecting.gettingUsersFromFirestore = false;
       }).catch(() => {
+        this.connecting.gettingUsersFromFirestore = false;
         this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
       });
     },
 
+    /*
+
+     the method below is for using firebase's websocket to update data in realtime. i'm however not using it due to the large dataset i'm dealing with.
+     i'm using caching here to limit the calls to to cloud server because google firestore records reads per field not per request, so this can quickly
+     get out of hand when dealing with a large data set like I am here.
+
+     */
     setUpRealTimeLink() {
       db.collection('users').onSnapshot(records => {
         this.users = records.docs.map(record => {
@@ -302,7 +329,7 @@ export default {
       });
     },
 
-    // this is for populating the sample set
+    // this is for populating the sample set. It's already populated so this does not need to be called again
     populateUsers() {
       this.connecting.addingRecords = true;
       const batch = db.batch();
