@@ -66,14 +66,14 @@
 
       <tbody>
       <tr v-for="(user, index) in users" :key="index">
-      <template v-if="index < 10">
-        <td>{{ user.name }}</td>
-        <td>{{ user.email }}</td>
-        <td>{{ user.phone }}</td>
-        <td>{{ user.dob | formatDate }}</td>
-        <td>{{ user.address }}</td>
-        <td>{{ user.bvn }}</td>
-      </template>
+        <template v-if="index < 10">
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.phone }}</td>
+          <td>{{ user.dob | formatDate }}</td>
+          <td>{{ user.address }}</td>
+          <td>{{ user.bvn }}</td>
+        </template>
       </tr>
       </tbody>
     </table>
@@ -94,6 +94,7 @@ export default {
   data() {
     return {
       users: [],
+      indexDB: null,
       localStorageRecord: [],
       indexDBRecord: [],
       localStorageInfo: {
@@ -110,8 +111,12 @@ export default {
     };
   },
 
+  async created() {
+    this.indexDB = await this.initializeIndexDB();
+  },
+
   mounted() {
-    this.setUpRealTimeLink();
+    // this.setUpRealTimeLink();
 
     // this.populateUsers();
   },
@@ -125,13 +130,14 @@ export default {
   methods: {
     setUpRealTimeLink() {
       db.collection('users').onSnapshot(records => {
-        console.log('records', { ...records });
         this.users = records.docs.map(record => {
           return record.data();
         });
         this.addRecordToLocalStorage();
       });
     },
+
+    // Local storage
 
     getRecordFromLocalStorage() {
       if (localStorage.getItem('woven_user_records')) {
@@ -171,11 +177,32 @@ export default {
       this.localStorageInfo.addTime = addTime;
     },
 
+    // Indexdb
+    initializeIndexDB() {
+      return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open('woven_user_records', 1);
+
+        request.onerror = e => {
+          this.$toastr('Error opening db', 'Error');
+          reject(e);
+        };
+
+        request.onsuccess = e => {
+          resolve(e.target.result);
+        };
+
+        request.onupgradeneeded = e => {
+          const database = e.target.result;
+          database.createObjectStore('user_records', { autoIncrement: true, keyPath: 'id' });
+        };
+      });
+    },
+
     // this is for populating the sample set
     populateUsers() {
       this.connecting.addingRecords = true;
       const batch = db.batch();
-      for (let i = 0; i < 1; i++) {
+      for (let i = 0; i < 500; i++) {
         const user = {
           timeStamp,
           name: this.$faker().fake('{{name.firstName}} {{name.lastName}}'),
