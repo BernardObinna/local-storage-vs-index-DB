@@ -1,6 +1,36 @@
+// variables
+$base-font-size: 20;
+
+//functions
+@function toRem($value) {
+  //  stripping units
+  $value: $value / ($value * 0 + 1);
+
+  //converting to rem
+  @return ($value / $base-font-size) * 1rem;
+}
+
+
+.heading {
+  text-align: center;
+
+  h1 {
+    font-size: toRem(64px);
+    line-height: toRem(78px);
+  }
+
+  @media screen and (min-width: 1200px) {
+    h1 {
+      font-size: toRem(32px);
+      line-height: toRem(39px);
+    }
+  }
+}
+
 th {
   border-top: none !important;
 }
+
 
 .btn {
   border-radius: 8px;

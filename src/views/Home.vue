@@ -1,8 +1,9 @@
 <template>
-  <div>
-    <div class="text-center">
-      <h1>Local storage vs Index DB</h1>
-      <p>The purpose of this app is simply to weigh the pro's and cons of local storage against index database</p>
+  <div class="p-3 p-lg-5">
+    <div class="heading">
+      <h1>Local storage vs IndexedDB</h1>
+      <p>The purpose of this app is simply to weigh the pro's and cons of local storage against indexed database.</p>
+      <p>Local storage and IndexedDB are both client-side storage mechanisms that allow for data persistence while offline. However, they both have different ways of going about their business.</p>
     </div>
 
     <div class="container-fluid">
@@ -10,15 +11,23 @@
         <div class="col-lg-6">
           <h3>Local storage</h3>
 
+          <p>
+            This is an API for storing key-value pairs of data within the browser.
+            it stores string data as key-value pairs without an expiration date. It can store JSON objects as well, provided it's stringified
+            Local storage will be available in the browser to all windows with the same origin (domain).
+          </p>
+
           <h5>Pros</h5>
           <ul class="">
-            <li>Easy and straightforward to work with</li>
+            <li>Easy and straightforward to work with.</li>
+            <li>Faster when working with small data sizes.</li>
           </ul>
 
           <h5>Cons</h5>
           <ul class="">
-            <li>It can only contain a small amount of data</li>
-            <li>It can only store strings as key value pairs</li>
+            <li>It can only contain a small amount of data compared to IndexedDB (about 5MB).</li>
+            <li>Slower when working with huge amount of data.</li>
+            <li>It can only store strings as key value pairs (JSON objects too if you stringify it).</li>
           </ul>
 
           <h5>Metrics</h5>
@@ -33,16 +42,21 @@
         <div class="col-lg-6">
           <h3>Index DB</h3>
 
+          <p>
+            IndexedDB is a much more complex and well-rounded solution for storing data in the browser.
+            It is a JavaScript-based, object-oriented, database that allows us to easily store and retrieve data that has been indexed with a key.
+          </p>
+
           <h5>Pros</h5>
           <ul class="">
-            <li>Allows fast indexing and searching of objects, so you can manage your data and read/write it fast.</li>
-            <li>It allow for storage of large amounts of data</li>
-            <li>It allow for storage of various data objects including files</li>
+            <li>Allows fast indexing and searching of objects when dealing with large amounts of data.</li>
+            <li>It allow for storage of large amounts of data.</li>
+            <li>It can handle more complex and structured data.</li>
           </ul>
 
           <h5>Cons</h5>
           <ul class="">
-            <li>It is complex to work with</li>
+            <li>It is complex and can be daunting to work with.</li>
           </ul>
 
           <h5>Metrics</h5>
@@ -56,36 +70,40 @@
       </div>
     </div>
 
-    <div class="d-flex justify-content-between">
-      <p>showing 1 to 20 users</p>
+    <div class="d-flex justify-content-between align-items-center">
+      <p class="mb-0">showing {{ tableShowCount }} users</p>
       <button class="btn btn--color-primary-blue" data-toggle="modal" data-target="#addUserModal" data-placement="top" title="Add user">New</button>
     </div>
-    <table class="table">
-      <thead>
-      <tr>
-        <th scope="col">Name</th>
-        <th scope="col">Email</th>
-        <th scope="col">Phone</th>
-        <th scope="col">D.O.B</th>
-        <th scope="col">Address</th>
-        <th scope="col">BVN</th>
-      </tr>
-      </thead>
 
-      <tbody>
-      <tr v-for="(user, index) in users" :key="index">
-        <template v-if="index < 10">
-          <td>{{ user.name }}</td>
-          <td>{{ user.email }}</td>
-          <td>{{ user.phone }}</td>
-          <td>{{ user.dob | formatDate }}</td>
-          <td>{{ user.address }}</td>
-          <td>{{ user.bvn }}</td>
-        </template>
-      </tr>
-      </tbody>
-    </table>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Email</th>
+          <th scope="col">Phone</th>
+          <th scope="col">D.O.B</th>
+          <th scope="col">Address</th>
+          <th scope="col">BVN</th>
+        </tr>
+        </thead>
 
+        <tbody>
+        <tr v-for="(user, index) in users" :key="index">
+          <template v-if="index < 10">
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.phone }}</td>
+            <td>{{ user.dob | formatDate }}</td>
+            <td>{{ user.address }}</td>
+            <td>{{ user.bvn }}</td>
+          </template>
+        </tr>
+        </tbody>
+      </table>
+
+    <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
+    </div>
     <add-user-modal @submitted="addNewUserLocally($event)"></add-user-modal>
   </div>
 </template>
@@ -125,7 +143,9 @@ export default {
         gettingUsersFromLS: false,
         gettingUsersFromIDB: false,
         addingRecords: false
-      }
+      },
+
+      tableShowCount: 20
     };
   },
 
@@ -171,6 +191,10 @@ export default {
 
     lsAddsSlower() {
       return this.localStorageMetrics.addTime > this.indexDBMetrics.addTime;
+    },
+
+    hideShowMore() {
+      return this.users.length < this.tableShowCount;
     }
   },
 
@@ -412,6 +436,10 @@ export default {
         this.connecting.addingRecords = false;
         this.$toastr.e('Couldn\'t upload data. Please check your network connection and refresh the page');
       });
+    },
+
+    showMore() {
+      this.tableShowCount += 10;
     }
   }
 };
