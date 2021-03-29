@@ -113,6 +113,7 @@ export default {
 
   async created() {
     this.indexDB = await this.initializeIndexDB();
+    this.indexDBRecord = await this.getRecordsFromIndexDB();
   },
 
   mounted() {
@@ -164,14 +165,14 @@ export default {
       this.getRecordFromLocalStorage();
     },
 
-    getRecordsFromIndexDB() {
-      if (!localStorage.getItem('woven_user_records')) {
-        const startTime = moment();
-        this.indexDBRecord = JSON.parse(localStorage.getItem('woven_user_records'));
-        const finishTime = moment();
-        this.localStorageInfo.getTime = startTime.diff(finishTime);
-      }
-    },
+    // getRecordsFromIndexDB() {
+    //   if (!localStorage.getItem('woven_user_records')) {
+    //     const startTime = moment();
+    //     this.indexDBRecord = JSON.parse(localStorage.getItem('woven_user_records'));
+    //     const finishTime = moment();
+    //     this.localStorageInfo.getTime = startTime.diff(finishTime);
+    //   }
+    // },
 
     setAddTime(addTime) {
       this.localStorageInfo.addTime = addTime;
@@ -194,6 +195,26 @@ export default {
         request.onupgradeneeded = e => {
           const database = e.target.result;
           database.createObjectStore('user_records', { autoIncrement: true, keyPath: 'id' });
+        };
+      });
+    },
+
+    getRecordsFromIndexDB() {
+      return new Promise((resolve, reject) => {
+        const transaction = this.indexDB.transaction(['user_records'], 'readonly');
+        const store = transaction.objectStore('user_records');
+        const indexDBRecord = [];
+
+        transaction.oncomplete = e => {
+          resolve(indexDBRecord);
+        };
+
+        store.openCursor().onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            indexDBRecord.push(cursor.value);
+            cursor.continue();
+          }
         };
       });
     },
