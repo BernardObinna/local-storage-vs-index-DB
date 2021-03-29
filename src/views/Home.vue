@@ -24,9 +24,9 @@
           <h5>Metrics</h5>
 
           <ul class="">
-            <li v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
-            <li v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
-            <li v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsGetsSlower, 'text-success': lsGetsFaster}" v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsSortSlower, 'text-success': lsSortFaster}" v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsAddsSlower, 'text-success': lsAddsFaster}" v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
           </ul>
         </div>
 
@@ -48,9 +48,9 @@
           <h5>Metrics</h5>
 
           <ul class="">
-            <li v-if="indexDBMetrics.getTime !== null">Fetch time: {{ indexDBMetrics.getTime }} Millisecond(s)</li>
-            <li v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
-            <li v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsGetsFaster, 'text-success': lsGetsSlower}" v-if="indexDBMetrics.getTime !== null">Fetch time: {{ indexDBMetrics.getTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsSortFaster, 'text-success': lsSortSlower}" v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
+            <li :class="{'text-danger': lsAddsFaster, 'text-success': lsAddsSlower}" v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
           </ul>
         </div>
       </div>
@@ -135,6 +135,7 @@ export default {
     await this.getRecordsFromIndexDB();
     this.getRecordFromLocalStorage();
     if (!this.indexDBRecord.length || !this.localStorageRecord.length) this.getUsersFromServer();
+    else this.users = this.indexDBRecord;
 
     // methods below don't need to be called by me again because i've set them up already. check their declarations for their uses
     // this.setUpRealTimeLink();
@@ -147,11 +148,37 @@ export default {
     }
   },
 
+  computed: {
+    lsGetsFaster() {
+      return this.localStorageMetrics.getTime < this.indexDBMetrics.getTime;
+    },
+
+    lsSortFaster() {
+      return this.localStorageMetrics.sortTime < this.indexDBMetrics.sortTime;
+    },
+
+    lsAddsFaster() {
+      return this.localStorageMetrics.addTime < this.indexDBMetrics.addTime;
+    },
+
+    lsGetsSlower() {
+      return this.localStorageMetrics.getTime > this.indexDBMetrics.getTime;
+    },
+
+    lsSortSlower() {
+      return this.localStorageMetrics.sortTime > this.indexDBMetrics.sortTime;
+    },
+
+    lsAddsSlower() {
+      return this.localStorageMetrics.addTime > this.indexDBMetrics.addTime;
+    }
+  },
+
   methods: {
     getUsersFromServer(useCache = true) {
       this.connecting.gettingUsersFromFirestore = true;
       const getOptions = { source: useCache ? 'cache' : 'server' };
-      db.collection('users').get(getOptions).then(res => {
+      db.collection('users').get(getOptions).then(async res => {
         // use the cache to get data if it is present
         if (!res.docs.length) {
           this.getUsersFromServer(false);
@@ -160,6 +187,12 @@ export default {
         this.users = res.docs.map(doc => {
           return doc.data();
         });
+
+        // clear both local storages
+        await this.clearIndexDB();
+        localStorage.removeItem('woven_user_records');
+        this.localStorageRecord = [];
+
         this.addAllRecordsToLocalStorage();
         this.addAllRecordsToIndexDB();
         this.connecting.gettingUsersFromFirestore = false;
@@ -220,8 +253,11 @@ export default {
 
     addNewUserToLocalStorage(user) {
       const addStartTime = moment();
-      JSON.parse(localStorage.getItem('woven_user_records')).push(user);
+      const currentRecord = JSON.parse(localStorage.getItem('woven_user_records'));
+      currentRecord.push(user);
+      localStorage.setItem('woven_user_records', JSON.stringify(currentRecord));
       const addFinishTime = moment();
+      this.localStorageRecord.push(user);
       this.localStorageMetrics.addTime = addFinishTime.diff(addStartTime);
     },
 
@@ -242,7 +278,7 @@ export default {
 
         request.onupgradeneeded = e => {
           const database = e.target.result;
-          database.createObjectStore('user_records', { autoIncrement: true, keyPath: 'id' });
+          database.createObjectStore('user_records', { autoIncrement: true, keyPath: 'bvn' });
           this.indexDBInitialized = true;
         };
       });
@@ -316,14 +352,32 @@ export default {
       if (!this.indexDBInitialized) return;
       return new Promise((resolve, reject) => {
         const addStartTime = moment();
-        const trans = this.indexDB.transaction(['user_records'], 'readwrite');
-        const store = trans.objectStore('user_records');
+        const transaction = this.indexDB.transaction(['user_records'], 'readwrite');
+        const store = transaction.objectStore('user_records');
         store.add(user);
 
-        trans.oncomplete = e => {
+        transaction.oncomplete = e => {
           const addFinishTime = moment();
           this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
           this.indexDBRecord.push(user);
+          resolve();
+        };
+      });
+    },
+
+    clearIndexDB() {
+      return new Promise((resolve, reject) => {
+        // open a read/write db transaction, ready for clearing the data
+        const transaction = this.indexDB.transaction(['user_records'], 'readwrite');
+
+        // create an object store on the transaction
+        const store = transaction.objectStore('user_records');
+
+        // Make a request to clear all the data out of the object store
+        const storeRequest = store.clear();
+
+        storeRequest.onsuccess = e => {
+          this.indexDBRecord = [];
           resolve();
         };
       });
