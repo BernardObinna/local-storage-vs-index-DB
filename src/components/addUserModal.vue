@@ -115,10 +115,7 @@ export default {
         db.collection('users').add(payload).then(() => {
           this.loading = false;
           this.$toastr.s('User data Uploaded', 'SUCCESS');
-          const AddStartTime = moment();
-          JSON.parse(localStorage.getItem('woven_user_records')).push(payload);
-          const AddFinishTime = moment();
-          this.$emit('submitted', AddFinishTime.diff(AddStartTime));
+          this.$emit('submitted', payload);
           this.$refs.closeDeleteModal.click();
         }).catch(() => {
           this.loading = false;

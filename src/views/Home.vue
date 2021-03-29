@@ -24,9 +24,9 @@
           <h5>Metrics</h5>
 
           <ul class="">
-            <li v-if="localStorageInfo.getTime !== null">Fetch time: {{ localStorageInfo.getTime }} Millisecond(s)</li>
-            <li v-if="localStorageInfo.sortTime !== null">Sort time: {{ localStorageInfo.sortTime }} Millisecond(s)</li>
-            <li v-if="localStorageInfo.addTime !== null">Add time: {{ localStorageInfo.addTime }} Millisecond(s)</li>
+            <li v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
+            <li v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
+            <li v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
           </ul>
         </div>
 
@@ -78,7 +78,7 @@
       </tbody>
     </table>
 
-    <add-user-modal @submitted="setAddTime($event)"></add-user-modal>
+    <add-user-modal @submitted="addNewUserLocally($event)"></add-user-modal>
   </div>
 </template>
 
@@ -97,12 +97,20 @@ export default {
       indexDB: null,
       localStorageRecord: [],
       indexDBRecord: [],
-      localStorageInfo: {
+
+      localStorageMetrics: {
         getTime: null,
         sortTime: null,
         addTime: null
       },
 
+      indexDBMetrics: {
+        getTime: null,
+        sortTime: null,
+        addTime: null
+      },
+
+      // this if for U.I loaders to show the loading state to the users
       connecting: {
         gettingUsersFromLS: false,
         gettingUsersFromIDB: false,
@@ -134,8 +142,14 @@ export default {
         this.users = records.docs.map(record => {
           return record.data();
         });
-        this.addRecordToLocalStorage();
+        this.addRecordsToLocalStorage();
+        this.addAllRecordsToIndexDB();
       });
+    },
+
+    addNewUserLocally(user) {
+      this.addNewUserToLocalStorage(user);
+      this.addSingleUserToIndexDB(user);
     },
 
     // Local storage
@@ -154,28 +168,22 @@ export default {
         const sortFinishTime = moment();
 
         this.users = this.localStorageRecord;
-        this.localStorageInfo.getTime = fetchFinishTime.diff(fetchStartTime);
-        this.localStorageInfo.sortTime = sortFinishTime.diff(sortStartTime);
+        this.localStorageMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
+        this.localStorageMetrics.sortTime = sortFinishTime.diff(sortStartTime);
         this.connecting.gettingUsersFromLS = false;
       }
     },
 
-    addRecordToLocalStorage() {
+    addRecordsToLocalStorage() {
       localStorage.setItem('woven_user_records', JSON.stringify(this.users));
       this.getRecordFromLocalStorage();
     },
 
-    // getRecordsFromIndexDB() {
-    //   if (!localStorage.getItem('woven_user_records')) {
-    //     const startTime = moment();
-    //     this.indexDBRecord = JSON.parse(localStorage.getItem('woven_user_records'));
-    //     const finishTime = moment();
-    //     this.localStorageInfo.getTime = startTime.diff(finishTime);
-    //   }
-    // },
-
-    setAddTime(addTime) {
-      this.localStorageInfo.addTime = addTime;
+    addNewUserToLocalStorage(user) {
+      const addStartTime = moment();
+      JSON.parse(localStorage.getItem('woven_user_records')).push(user);
+      const addFinishTime = moment();
+      this.localStorageMetrics.addTime = addFinishTime.diff(addStartTime);
     },
 
     // Indexdb
@@ -215,6 +223,27 @@ export default {
             indexDBRecord.push(cursor.value);
             cursor.continue();
           }
+        };
+      });
+    },
+
+    addAllRecordsToIndexDB() {
+      this.users.forEach(async user => {
+        await this.addSingleUserToIndexDB(user);
+      });
+    },
+
+    addSingleUserToIndexDB(user) {
+      return new Promise((resolve, reject) => {
+        const addStartTime = moment();
+        const trans = this.db.transaction(['user_records'], 'readwrite');
+        const store = trans.objectStore('user_records');
+        store.add(user);
+
+        trans.oncomplete = e => {
+          const addFinishTime = moment();
+          this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
+          resolve();
         };
       });
     },
