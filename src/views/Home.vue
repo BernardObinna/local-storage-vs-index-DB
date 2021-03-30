@@ -107,7 +107,7 @@
 
       <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
     </div>
-    <div class="spinner-border text-primary d-block mx-auto my-5" role="status" v-else>
+    <div class="spinner-border text-primary d-block mx-auto my-5" role="status" v-if="loading">
       <span class="sr-only">Loading...</span>
     </div>
     <add-user-modal @submitted="addNewUserLocally($event)"></add-user-modal>
