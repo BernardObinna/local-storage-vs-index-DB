@@ -6,7 +6,7 @@
       <p>Local storage and IndexedDB are both client-side storage mechanisms that allow for data persistence while offline. However, they both have different ways of going about their business.</p>
     </div>
 
-    <div class="container-fluid">
+    <div class="container-fluid body mt-5">
       <div class="row">
         <div class="col-lg-6">
           <h3>Local storage</h3>
@@ -26,17 +26,18 @@
           <h5>Cons</h5>
           <ul class="">
             <li>It can only contain a small amount of data compared to IndexedDB (about 5MB).</li>
-            <li>Slower when working with huge amount of data.</li>
             <li>It can only store strings as key value pairs (JSON objects too if you stringify it).</li>
           </ul>
 
+          <template v-show="!loading">
           <h5>Metrics</h5>
 
-          <ul class="">
+          <ul>
             <li :class="{'text-danger': lsGetsSlower, 'text-success': lsGetsFaster}" v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
             <li :class="{'text-danger': lsSortSlower, 'text-success': lsSortFaster}" v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
             <li :class="{'text-danger': lsAddsSlower, 'text-success': lsAddsFaster}" v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
           </ul>
+          </template>
         </div>
 
         <div class="col-lg-6">
@@ -49,16 +50,17 @@
 
           <h5>Pros</h5>
           <ul class="">
-            <li>Allows fast indexing and searching of objects when dealing with large amounts of data.</li>
-            <li>It allow for storage of large amounts of data.</li>
+            <li>It allow for fast indexing, searching and storage of large amounts of complex data.</li>
             <li>It can handle more complex and structured data.</li>
           </ul>
 
           <h5>Cons</h5>
           <ul class="">
             <li>It is complex and can be daunting to work with.</li>
+            <li>generally slower than the alternative when working with simple data</li>
           </ul>
 
+          <template v-show="!loading">
           <h5>Metrics</h5>
 
           <ul class="">
@@ -66,16 +68,17 @@
             <li :class="{'text-danger': lsSortFaster, 'text-success': lsSortSlower}" v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
             <li :class="{'text-danger': lsAddsFaster, 'text-success': lsAddsSlower}" v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
           </ul>
+          </template>
         </div>
       </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center">
-      <p class="mb-0">showing {{ tableShowCount }} users</p>
-      <button class="btn btn--color-primary-blue" data-toggle="modal" data-target="#addUserModal" data-placement="top" title="Add user">New</button>
+    <div class="d-flex align-items-center">
+      <p class="mb-0" v-if="users.length">showing {{ tableShowCount }} users of {{ users.length }}</p>
+      <button class="btn btn--color-primary-blue ml-auto" data-toggle="modal" data-target="#addUserModal" data-placement="top" title="Add user" :disabled="loading">New</button>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive mt-4" v-if="users.length && !loading">
       <table class="table">
         <thead>
         <tr>
@@ -90,7 +93,7 @@
 
         <tbody>
         <tr v-for="(user, index) in users" :key="index">
-          <template v-if="index < 10">
+          <template v-if="index < tableShowCount">
             <td>{{ user.name }}</td>
             <td>{{ user.email }}</td>
             <td>{{ user.phone }}</td>
@@ -102,7 +105,10 @@
         </tbody>
       </table>
 
-    <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
+      <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
+    </div>
+    <div class="spinner-border text-primary d-block mx-auto my-5" role="status" v-else>
+      <span class="sr-only">Loading...</span>
     </div>
     <add-user-modal @submitted="addNewUserLocally($event)"></add-user-modal>
   </div>
@@ -138,6 +144,7 @@ export default {
       },
 
       // this if for U.I loaders to show the loading state to the users
+      loading: false,
       connecting: {
         gettingUsersFromFirestore: false,
         gettingUsersFromLS: false,
@@ -200,7 +207,7 @@ export default {
 
   methods: {
     getUsersFromServer(useCache = true) {
-      this.connecting.gettingUsersFromFirestore = true;
+      this.loading = true;
       const getOptions = { source: useCache ? 'cache' : 'server' };
       db.collection('users').get(getOptions).then(async res => {
         // use the cache to get data if it is present
@@ -218,10 +225,10 @@ export default {
         this.localStorageRecord = [];
 
         this.addAllRecordsToLocalStorage();
-        this.addAllRecordsToIndexDB();
-        this.connecting.gettingUsersFromFirestore = false;
+        await this.addUsersToIndexDB();
+        this.loading = false;
       }).catch(() => {
-        this.connecting.gettingUsersFromFirestore = false;
+        this.loading = false;
         this.$toastr.e('Couldn\'t get data. Please check your network connection and refresh the page');
       });
     },
@@ -234,25 +241,24 @@ export default {
 
      */
     setUpRealTimeLink() {
-      db.collection('users').onSnapshot(records => {
+      db.collection('users').onSnapshot(async records => {
         this.users = records.docs.map(record => {
           return record.data();
         });
         this.addAllRecordsToLocalStorage();
-        this.addAllRecordsToIndexDB();
+        await this.addUsersToIndexDB();
       });
     },
 
     addNewUserLocally(user) {
       this.addNewUserToLocalStorage(user);
-      this.addSingleUserToIndexDB(user);
+      this.addUsersToIndexDB(true, user);
     },
 
     // Local storage
-
     getRecordFromLocalStorage() {
       if (localStorage.getItem('woven_user_records')) {
-        this.connecting.gettingUsersFromLS = true;
+        this.loading = true;
         // fetch
         const fetchStartTime = moment();
         this.localStorageRecord = JSON.parse(localStorage.getItem('woven_user_records'));
@@ -266,7 +272,7 @@ export default {
         this.users = this.localStorageRecord;
         this.localStorageMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
         this.localStorageMetrics.sortTime = sortFinishTime.diff(sortStartTime);
-        this.connecting.gettingUsersFromLS = false;
+        this.loading = false;
       }
     },
 
@@ -310,8 +316,8 @@ export default {
 
     getRecordsFromIndexDB() {
       if (!this.indexDBInitialized) return;
-      return new Promise((resolve, reject) => {
-        this.connecting.gettingUsersFromIDB = true;
+      return new Promise((resolve) => {
+        this.loading = true;
 
         // fetch
         const fetchStartTime = moment();
@@ -319,10 +325,10 @@ export default {
         const store = transaction.objectStore('user_records');
         const indexDBRecord = [];
 
-        transaction.oncomplete = async e => {
+        transaction.oncomplete = async () => {
           this.indexDBRecord = indexDBRecord;
           const fetchFinishTime = moment();
-          this.connecting.gettingUsersFromIDB = false;
+          this.loading = false;
           this.indexDBMetrics.getTime = fetchFinishTime.diff(fetchStartTime);
           await this.sortIndexDB();
           resolve();
@@ -340,7 +346,7 @@ export default {
 
     sortIndexDB() {
       if (!this.indexDBInitialized) return;
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const sortStartTime = moment();
         const transaction = this.indexDB.transaction(['user_records'], 'readonly');
         const store = transaction.objectStore('user_records');
@@ -355,32 +361,31 @@ export default {
           }
         };
 
-        transaction.oncomplete = e => {
+        transaction.oncomplete = () => {
           this.indexDBRecord = indexDBRecord;
           const sortFinishTime = moment();
-          this.connecting.gettingUsersFromIDB = false;
+          this.loading = false;
           this.indexDBMetrics.sortTime = sortFinishTime.diff(sortStartTime);
           resolve();
         };
       });
     },
 
-    addAllRecordsToIndexDB() {
+    addUsersToIndexDB(single = false, user = null) {
       if (!this.indexDBInitialized) return;
-      this.users.forEach(async user => {
-        await this.addSingleUserToIndexDB(user);
-      });
-    },
-
-    addSingleUserToIndexDB(user) {
-      if (!this.indexDBInitialized) return;
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const addStartTime = moment();
         const transaction = this.indexDB.transaction(['user_records'], 'readwrite');
         const store = transaction.objectStore('user_records');
-        store.add(user);
 
-        transaction.oncomplete = e => {
+        if (single && user) store.add(user);
+        else {
+          this.users.forEach(user => {
+            store.add(user);
+          });
+        }
+
+        transaction.oncomplete = () => {
           const addFinishTime = moment();
           this.indexDBMetrics.addTime = addFinishTime.diff(addStartTime);
           this.indexDBRecord.push(user);
@@ -390,7 +395,7 @@ export default {
     },
 
     clearIndexDB() {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         // open a read/write db transaction, ready for clearing the data
         const transaction = this.indexDB.transaction(['user_records'], 'readwrite');
 
@@ -400,7 +405,7 @@ export default {
         // Make a request to clear all the data out of the object store
         const storeRequest = store.clear();
 
-        storeRequest.onsuccess = e => {
+        storeRequest.onsuccess = () => {
           this.indexDBRecord = [];
           resolve();
         };
@@ -409,10 +414,9 @@ export default {
 
     // this is for populating the sample set. It's already populated so this does not need to be called again
     populateUsers() {
-      this.connecting.addingRecords = true;
+      this.loading = true;
       const batch = db.batch();
-      // for (let i = 0; i < 500; i++) {
-      for (let i = 0; i < 1; i++) {
+      for (let i = 0; i < 500; i++) {
         const user = {
           timeStamp,
           name: this.$faker().fake('{{name.firstName}} {{name.lastName}}'),
@@ -427,19 +431,23 @@ export default {
         batch.set(refrence, user);
       }
 
-      batch.commit().then(() => {
-        this.connecting.addingRecords = false;
+      batch.commit().then(async () => {
+        await this.clearIndexDB();
+        localStorage.removeItem('woven_user_records');
+        this.localStorageRecord = [];
         this.addAllRecordsToLocalStorage();
-        this.addAllRecordsToIndexDB();
+        await this.addUsersToIndexDB();
+        this.loading = false;
         this.$toastr.s('Data uploaded', 'SUCCESS');
       }).catch(() => {
-        this.connecting.addingRecords = false;
+        this.loading = false;
         this.$toastr.e('Couldn\'t upload data. Please check your network connection and refresh the page');
       });
     },
 
     showMore() {
-      this.tableShowCount += 10;
+      if ((this.tableShowCount + 10) < this.users.length) this.tableShowCount += 10;
+      else this.tableShowCount = this.users.length;
     }
   }
 };

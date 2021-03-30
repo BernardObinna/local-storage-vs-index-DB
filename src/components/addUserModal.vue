@@ -54,8 +54,8 @@
               <small class="text-danger" v-if="$v.form.bvn.$dirty && !$v.form.bvn.maxLength">BVN provided is too long </small>
             </div>
 
-            <div class="mt-4">
-              <button type="submit" :disabled="loading || this.$v.form.$anyError" class="btn btn--color-primary-blue">{{ loading ? 'Processing' : 'Submit' }}</button>
+            <div class="mt-4 mb-2">
+              <button type="submit" :disabled="loading || this.$v.form.$anyError" class="btn btn--color-primary-blue w-100">{{ loading ? 'Processing' : 'Submit' }}</button>
             </div>
           </form>
         </div>
