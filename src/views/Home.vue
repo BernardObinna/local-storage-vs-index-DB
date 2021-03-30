@@ -30,13 +30,13 @@
           </ul>
 
           <template v-show="!loading">
-          <h5>Metrics</h5>
+            <h5>Metrics</h5>
 
-          <ul>
-            <li :class="{'text-danger': lsGetsSlower, 'text-success': lsGetsFaster}" v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
-            <li :class="{'text-danger': lsSortSlower, 'text-success': lsSortFaster}" v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
-            <li :class="{'text-danger': lsAddsSlower, 'text-success': lsAddsFaster}" v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
-          </ul>
+            <ul>
+              <li :class="{'text-danger': lsGetsSlower, 'text-success': lsGetsFaster}" v-if="localStorageMetrics.getTime !== null">Fetch time: {{ localStorageMetrics.getTime }} Millisecond(s)</li>
+              <li :class="{'text-danger': lsSortSlower, 'text-success': lsSortFaster}" v-if="localStorageMetrics.sortTime !== null">Sort time: {{ localStorageMetrics.sortTime }} Millisecond(s)</li>
+              <li :class="{'text-danger': lsAddsSlower, 'text-success': lsAddsFaster}" v-if="localStorageMetrics.addTime !== null">Add time: {{ localStorageMetrics.addTime }} Millisecond(s)</li>
+            </ul>
           </template>
         </div>
 
@@ -61,13 +61,13 @@
           </ul>
 
           <template v-show="!loading">
-          <h5>Metrics</h5>
+            <h5>Metrics</h5>
 
-          <ul class="">
-            <li :class="{'text-danger': lsGetsFaster, 'text-success': lsGetsSlower}" v-if="indexDBMetrics.getTime !== null">Fetch time: {{ indexDBMetrics.getTime }} Millisecond(s)</li>
-            <li :class="{'text-danger': lsSortFaster, 'text-success': lsSortSlower}" v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
-            <li :class="{'text-danger': lsAddsFaster, 'text-success': lsAddsSlower}" v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
-          </ul>
+            <ul class="">
+              <li :class="{'text-danger': lsGetsFaster, 'text-success': lsGetsSlower}" v-if="indexDBMetrics.getTime !== null">Fetch time: {{ indexDBMetrics.getTime }} Millisecond(s)</li>
+              <li :class="{'text-danger': lsSortFaster, 'text-success': lsSortSlower}" v-if="indexDBMetrics.sortTime !== null">Sort time: {{ indexDBMetrics.sortTime }} Millisecond(s)</li>
+              <li :class="{'text-danger': lsAddsFaster, 'text-success': lsAddsSlower}" v-if="indexDBMetrics.addTime !== null">Add time: {{ indexDBMetrics.addTime }} Millisecond(s)</li>
+            </ul>
           </template>
         </div>
       </div>
@@ -104,9 +104,8 @@
         </tr>
         </tbody>
       </table>
-
-      <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
     </div>
+    <p @click="showMore" class="text-center text-primary pointer" v-if="!hideShowMore">Show more</p>
     <div class="spinner-border text-primary d-block mx-auto my-5" role="status" v-if="loading">
       <span class="sr-only">Loading...</span>
     </div>
